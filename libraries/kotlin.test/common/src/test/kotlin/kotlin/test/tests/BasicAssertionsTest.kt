@@ -197,6 +197,8 @@ private fun checkFailedAssertion(assertion: () -> Unit) {
     assertFailsWith<AssertionError> { withDefaultAsserter(assertion) }
 }
 
+// TODO: internal visibility bug in JR IR BE
+@Suppress("INVISIBLE_REFERENCE", "INVISIBLE_MEMBER")
 private fun withDefaultAsserter(block: () -> Unit) {
     val current = overrideAsserter(DefaultAsserter)
     try {
