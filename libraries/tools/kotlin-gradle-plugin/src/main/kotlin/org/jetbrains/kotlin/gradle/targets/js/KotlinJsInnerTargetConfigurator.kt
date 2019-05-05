@@ -20,7 +20,12 @@ abstract class KotlinJsInnerTargetConfigurator(val target: KotlinOnlyTarget<Kotl
     val project get() = target.project
     private val disambiguationClassifier get() = "browser"
 
-    protected fun disambiguate(name: String): MutableList<String> {
+    fun configure() {
+        configureTests()
+        configureRun()
+    }
+
+    private fun disambiguate(name: String): MutableList<String> {
         val components = mutableListOf<String>()
 
         components.addIfNotNull(target.disambiguationClassifier)
@@ -35,7 +40,7 @@ abstract class KotlinJsInnerTargetConfigurator(val target: KotlinOnlyTarget<Kotl
         return components.first() + components.drop(1).joinToString("") { it.capitalize() }
     }
 
-    fun configureTests(target: KotlinOnlyTarget<KotlinJsCompilation>) {
+    private fun configureTests() {
         target.compilations.all { compilation ->
             if (compilation.name == KotlinCompilation.TEST_COMPILATION_NAME) {
                 configureTests(compilation)
