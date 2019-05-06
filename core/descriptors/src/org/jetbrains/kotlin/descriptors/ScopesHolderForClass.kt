@@ -43,7 +43,6 @@ class ScopesHolderForClass<T : MemberScope> private constructor(
 }
 
 fun TypeConstructor.areThereExpectSupertypes(): Boolean {
-    return false
     var result = false
     DFS.dfs(
         listOf(this),
