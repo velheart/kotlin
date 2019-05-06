@@ -39,7 +39,6 @@ import org.jetbrains.kotlin.codegen.state.KotlinTypeMapper.InternalNameMapper.de
 import org.jetbrains.kotlin.codegen.state.KotlinTypeMapper.InternalNameMapper.getModuleNameSuffix
 import org.jetbrains.kotlin.codegen.state.KotlinTypeMapper.InternalNameMapper.mangleInternalName
 import org.jetbrains.kotlin.descriptors.FunctionDescriptor
-import org.jetbrains.kotlin.idea.caches.resolve.getResolutionFacade
 import org.jetbrains.kotlin.idea.caches.resolve.unsafeResolveToDescriptor
 import org.jetbrains.kotlin.idea.refactoring.Pass
 import org.jetbrains.kotlin.idea.refactoring.checkSuperMethods
@@ -84,17 +83,17 @@ class RenameKotlinFunctionProcessor : RenameKotlinPsiProcessor() {
         val allReferences = super.findReferences(element)
         return when {
             getJvmName(element) == null -> allReferences
-            element is KtElement -> allReferences.filter { it is KtReference }
+            element is KtElement -> allReferences.filterIsInstance<KtReference>()
             element is KtLightElement<*, *> -> allReferences.filterNot { it is KtReference }
             else -> emptyList()
         }
     }
 
     override fun findCollisions(
-            element: PsiElement,
-            newName: String,
-            allRenames: Map<out PsiElement, String>,
-            result: MutableList<UsageInfo>
+        element: PsiElement,
+        newName: String,
+        allRenames: Map<out PsiElement, String>,
+        result: MutableList<UsageInfo>
     ) {
         val declaration = element.unwrapped as? KtNamedFunction ?: return
         checkConflictsAndReplaceUsageInfos(element, allRenames, result)
@@ -106,8 +105,8 @@ class RenameKotlinFunctionProcessor : RenameKotlinPsiProcessor() {
     }
 
     class FunctionWithSupersWrapper(
-            val originalDeclaration: KtNamedFunction,
-            val supers: List<PsiElement>
+        val originalDeclaration: KtNamedFunction,
+        val supers: List<PsiElement>
     ) : KtLightElement<KtNamedFunction, KtNamedFunction>, PsiNamedElement by originalDeclaration {
         override val kotlinOrigin: KtNamedFunction?
             get() = originalDeclaration
@@ -145,8 +144,7 @@ class RenameKotlinFunctionProcessor : RenameKotlinPsiProcessor() {
         fun preprocessAndPass(substitutedJavaElement: PsiElement) {
             val elementToProcess = if (substitutedJavaElement is KtLightMethod && element is KtDeclaration) {
                 substitutedJavaElement.kotlinOrigin as? KtNamedFunction
-            }
-            else {
+            } else {
                 substitutedJavaElement
             }
             renameCallback.pass(elementToProcess)
@@ -174,10 +172,16 @@ class RenameKotlinFunctionProcessor : RenameKotlinPsiProcessor() {
         }
     }
 
-    override fun createRenameDialog(project: Project, element: PsiElement, nameSuggestionContext: PsiElement?, editor: Editor?): RenameDialog {
+    override fun createRenameDialog(
+        project: Project,
+        element: PsiElement,
+        nameSuggestionContext: PsiElement?,
+        editor: Editor?
+    ): RenameDialog {
         val elementForDialog = (element as? FunctionWithSupersWrapper)?.originalDeclaration ?: element
         return object : RenameDialog(project, elementForDialog, nameSuggestionContext, editor) {
-            override fun createRenameProcessor(newName: String) = RenameProcessor(getProject(), element, newName, isSearchInComments, isSearchInNonJavaFiles)
+            override fun createRenameProcessor(newName: String) =
+                RenameProcessor(getProject(), element, newName, isSearchInComments, isSearchInNonJavaFiles)
         }
     }
 
@@ -199,7 +203,7 @@ class RenameKotlinFunctionProcessor : RenameKotlinPsiProcessor() {
                 mangleInternalName(newName, getModuleNameSuffix(baseName)!!)
             } else newName
             if (psiMethod.containingClass != null) {
-                psiMethod.forEachOverridingMethod(scope) { it ->
+                psiMethod.forEachOverridingMethod(scope) {
                     val overrider = (it as? PsiMirrorElement)?.prototype as? PsiMethod ?: it
 
                     if (overrider is SyntheticElement) return@forEachOverridingMethod true
@@ -208,7 +212,7 @@ class RenameKotlinFunctionProcessor : RenameKotlinPsiProcessor() {
                     val newOverriderName = RefactoringUtil.suggestNewOverriderName(overriderName, baseName, newBaseName)
                     if (newOverriderName != null) {
                         RenameProcessor.assertNonCompileElement(overrider)
-                        allRenames.put(overrider, newOverriderName)
+                        allRenames[overrider] = newOverriderName
                     }
                     return@forEachOverridingMethod true
                 }
@@ -227,8 +231,7 @@ class RenameKotlinFunctionProcessor : RenameKotlinPsiProcessor() {
 
             if (usage.isAmbiguousImportUsage()) {
                 ambiguousImportUsages += usage
-            }
-            else {
+            } else {
                 if (!renameMangledUsageIfPossible(usage, element, newName)) {
                     simpleUsages += usage
                 }

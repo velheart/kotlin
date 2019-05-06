@@ -47,12 +47,10 @@ import org.jetbrains.kotlin.idea.caches.project.implementedModules
 import org.jetbrains.kotlin.idea.caches.resolve.*
 import org.jetbrains.kotlin.idea.caches.resolve.util.getJavaMemberDescriptor
 import org.jetbrains.kotlin.idea.codeInsight.DescriptorToSourceUtilsIde
-import org.jetbrains.kotlin.idea.core.getPackage
 import org.jetbrains.kotlin.idea.core.isInTestSourceContentKotlinAware
 import org.jetbrains.kotlin.idea.imports.importableFqName
 import org.jetbrains.kotlin.idea.project.TargetPlatformDetector
 import org.jetbrains.kotlin.idea.project.forcedTargetPlatform
-import org.jetbrains.kotlin.idea.refactoring.fqName.getKotlinFqName
 import org.jetbrains.kotlin.idea.refactoring.getUsageContext
 import org.jetbrains.kotlin.idea.refactoring.move.KotlinMoveUsage
 import org.jetbrains.kotlin.idea.search.and
@@ -429,7 +427,7 @@ class MoveConflictChecker(
         }
 
         fun DeclarationDescriptor.targetAwareContainingClass(): ClassDescriptor? {
-            return targetAwareContainers().firstIsInstanceOrNull<ClassDescriptor>()
+            return targetAwareContainers().firstIsInstanceOrNull()
         }
 
         fun DeclarationDescriptorWithVisibility.isProtectedVisible(referrerDescriptor: DeclarationDescriptor): Boolean {
@@ -577,7 +575,7 @@ class MoveConflictChecker(
                             true                                                    // => 100% clash
                         aSupertypes.size == 1 && bSupertypes.size == 1 ->           // a = T: T1, b = T: T2
                             equivalent(aSupertypes.first(), bSupertypes.first())    // equivalent(T1, T2) => clash
-                        a.arguments.size != 0 && b.arguments.size != 0 ->
+                        a.arguments.isNotEmpty() && b.arguments.isNotEmpty() ->
                             equivalent(                                             // a = Something<....>, b = SomethingElse<....>
                                 a.constructor.declarationDescriptor?.name,          // equivalent(Something, SomethingElse) => clash
                                 b.constructor.declarationDescriptor?.name
@@ -624,10 +622,10 @@ class MoveConflictChecker(
         }
 
         (elementsToMove - doNotGoIn)
-            .filter {it is PsiNamedElement}
+            .filterIsInstance<PsiNamedElement>()
             .forEach { declaration ->
                 val declarationDescriptor =
-                    declaration.analyze().get(BindingContext.DECLARATION_TO_DESCRIPTOR, declaration)
+                    (declaration as KtElement).analyze().get(BindingContext.DECLARATION_TO_DESCRIPTOR, declaration)
                 if (declarationDescriptor is DeclarationDescriptor) {
                     val baseDescriptor = moveTarget.getContainerDescriptor()
                     if (baseDescriptor != null) {
