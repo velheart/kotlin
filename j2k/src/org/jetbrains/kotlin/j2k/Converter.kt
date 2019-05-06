@@ -162,7 +162,7 @@ class Converter private constructor(
         }
 
         val annotations = convertAnnotations(psiClass)
-        var modifiers = convertModifiers(psiClass, false, false)
+        var modifiers = convertModifiers(psiClass, isMethodInOpenClass = false, isInObject = false)
         val typeParameters = convertTypeParameterList(psiClass.typeParameterList)
         val extendsTypes = convertToNotNullableTypes(psiClass.extendsList)
         val implementsTypes = convertToNotNullableTypes(psiClass.implementsList)

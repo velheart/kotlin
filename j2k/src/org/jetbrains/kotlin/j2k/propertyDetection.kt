@@ -222,7 +222,7 @@ private class PropertyDetector(
 
             val propertyAccess = modifiers.accessModifier()
             val setterAccess = if (setterInfo != null)
-                converter.convertModifiers(setterInfo.method, false, false).accessModifier()
+                converter.convertModifiers(setterInfo.method, isMethodInOpenClass = false, isInObject = false).accessModifier()
             else if (field != null && field.isVar(converter.referenceSearcher))
                 converter.convertModifiers(field, false, false).accessModifier()
             else

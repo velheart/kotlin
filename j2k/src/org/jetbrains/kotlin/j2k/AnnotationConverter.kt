@@ -190,7 +190,7 @@ class AnnotationConverter(private val converter: Converter) {
         if (returnType is PsiArrayType && value !is PsiArrayInitializerMemberValue) {
             return converter.deferredElement { codeConverter ->
                 converter.typeConverter.convertType(returnType) as ArrayType
-                val convertAttributeValue = convertAttributeValue(value, returnType.componentType, false, false)
+                val convertAttributeValue = convertAttributeValue(value, returnType.componentType, isVararg = false, isUnnamed = false)
                 createArrayLiteralExpression(codeConverter, convertAttributeValue.toList())
             }
         }
