@@ -41,7 +41,6 @@ import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.NotNullableUserDataProperty
 import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition
 import org.jetbrains.kotlin.scripting.definitions.findScriptDefinition
-import org.jetbrains.kotlin.scripting.definitions.scriptDefinition
 import org.jetbrains.kotlin.scripting.resolve.LegacyResolverWrapper
 import kotlin.script.experimental.dependencies.AsyncDependenciesResolver
 import kotlin.script.experimental.dependencies.ScriptDependencies
@@ -53,9 +52,11 @@ class ScriptDependenciesUpdater(
     private val scriptsQueue = Alarm(Alarm.ThreadToUse.SWING_THREAD, project)
     private val scriptChangesListenerDelay = 1400
 
-    private val asyncLoader = AsyncScriptDependenciesLoader(project)
-    private val syncLoader = SyncScriptDependenciesLoader(project)
-    private val fileAttributeLoader = FromFileAttributeScriptDependenciesLoader(project)
+    private val loaders = arrayListOf(
+        FromFileAttributeScriptDependenciesLoader(project),
+        AsyncScriptDependenciesLoader(project),
+        SyncScriptDependenciesLoader(project)
+    )
 
     init {
         listenForChangesInScripts()
@@ -64,12 +65,7 @@ class ScriptDependenciesUpdater(
     fun getCurrentDependencies(file: VirtualFile): ScriptDependencies {
         cache[file]?.let { return it }
 
-        val scriptDef = file.findScriptDefinition(project) ?: return ScriptDependencies.Empty
-
-        fileAttributeLoader.updateDependencies(file, scriptDef)
-
-        updateDependencies(file, scriptDef)
-
+        updateDependencies(file)
         makeRootsChangeIfNeeded()
 
         return cache[file] ?: ScriptDependencies.Empty
@@ -93,18 +89,14 @@ class ScriptDependenciesUpdater(
         return wasDependenciesUpdateStarted
     }
 
-    private fun updateDependencies(file: VirtualFile, scriptDef: KotlinScriptDefinition) {
-        val loader = when {
-            isAsyncDependencyResolver(scriptDef) -> asyncLoader
-            else -> syncLoader
-        }
-        loader.updateDependencies(file, scriptDef)
+    private fun updateDependencies(file: VirtualFile) {
+        loaders.filter { it.isApplicable(file) }.forEach { it.updateDependencies(file) }
     }
 
     private fun makeRootsChangeIfNeeded() {
-        if (fileAttributeLoader.notifyRootsChanged()) return
-        if (syncLoader.notifyRootsChanged()) return
-        if (asyncLoader.notifyRootsChanged()) return
+        loaders.firstOrNull {
+            it.notifyRootsChanged()
+        }
     }
 
     private fun listenForChangesInScripts() {
@@ -159,7 +151,9 @@ class ScriptDependenciesUpdater(
                 scriptsQueue.addRequest(
                     {
                         FileDocumentManager.getInstance().saveDocument(document)
-                        updateDependencies(file, scriptDef)
+
+                        updateDependencies(file)
+                        makeRootsChangeIfNeeded()
                     },
                     scriptChangesListenerDelay,
                     true
@@ -172,11 +166,7 @@ class ScriptDependenciesUpdater(
         return cache[file] != null || file.scriptDependencies != null
     }
 
-    private fun areDependenciesCached(files: List<VirtualFile>): Boolean {
-        return files.all { areDependenciesCached(it) }
-    }
-
-    private fun isAsyncDependencyResolver(scriptDef: KotlinScriptDefinition): Boolean {
+    fun isAsyncDependencyResolver(scriptDef: KotlinScriptDefinition): Boolean {
         val dependencyResolver = scriptDef.dependencyResolver
         return dependencyResolver is AsyncDependenciesResolver || dependencyResolver is LegacyResolverWrapper
     }
