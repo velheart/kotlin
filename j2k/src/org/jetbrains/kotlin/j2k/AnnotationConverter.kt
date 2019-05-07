@@ -194,7 +194,7 @@ class AnnotationConverter(private val converter: Converter) {
                 createArrayLiteralExpression(codeConverter, convertAttributeValue.toList())
             }
         }
-        return converter.deferredElement(convertAttributeValue(value, returnType, false, false).single())
+        return converter.deferredElement(convertAttributeValue(value, returnType, isVararg = false, isUnnamed = false).single())
     }
 
     private fun convertAttributeValue(value: PsiAnnotationMemberValue?, expectedType: PsiType?, isVararg: Boolean, isUnnamed: Boolean): List<(CodeConverter) -> Expression> {
