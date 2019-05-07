@@ -293,14 +293,20 @@ class Converter private constructor(
         classBody = ClassBody(null, constructorSignature, classBody.baseClassParams, classBody.members,
                               classBody.companionObjectMembers, classBody.lBrace, classBody.rBrace, classBody.classKind)
 
-        return Class(psiClass.declarationIdentifier(),
-                     convertAnnotations(psiClass),
-                     convertModifiers(psiClass, false, false).with(Modifier.ANNOTATION).without(Modifier.ABSTRACT),
-                     TypeParameterList.Empty,
-                     listOf(),
-                     null,
-                     listOf(),
-                     classBody).assignPrototype(psiClass)
+        return Class(
+            psiClass.declarationIdentifier(),
+            convertAnnotations(psiClass),
+            convertModifiers(
+                psiClass,
+                isMethodInOpenClass = false,
+                isInObject = false
+            ).with(Modifier.ANNOTATION).without(Modifier.ABSTRACT),
+            TypeParameterList.Empty,
+            listOf(),
+            null,
+            listOf(),
+            classBody
+        ).assignPrototype(psiClass)
     }
 
     fun convertInitializer(initializer: PsiClassInitializer): Initializer {
